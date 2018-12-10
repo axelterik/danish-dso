@@ -1,9 +1,10 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 import statistics as stats
-#import datetime as dt
+
 
 def edit_time_stamp(file,new_file):
+    # function used to drop unnecessary columns from dataset and create new file
     data = pd.read_csv(file, sep=',', na_values=".",
         usecols=['meter_no','date','timestamp','energyact_pos','energyact_neg','energyreact_pos','energyreact_neg','generatingunitkind'])
     [['meter_no','date','timestamp','energyact_pos','energyact_neg','energyreact_pos','energyreact_neg','generatingunitkind']]
@@ -14,7 +15,7 @@ def edit_time_stamp(file,new_file):
     data.to_csv(new_file, encoding='utf-8', index=False) # creating a new file
 
 def make_some_timeseries(file):
-    # data from: https://www.esios.ree.es/es/analisis/630?vis=1&start_date=31-10-2016T00%3A00&end_date=31-10-2018T23%3A50&compare_start_date=30-10-2016T00%3A00&groupby=hour&compare_indicators=680,10056,10252,681,682,683
+    # Read file and create a time series object
     dateparse = lambda dates: pd.datetime.strptime(dates, '%d-%m-%Y %H:%M')
     df = pd.read_csv(file, sep=',', na_values=".",
             parse_dates=['datetime'],
@@ -26,7 +27,9 @@ def make_some_timeseries(file):
     #print(df)
     return df
 
-def get_mean_hourly(meter,df,value): # takes a matrix with one meter_no
+def get_mean_hourly(meter,df,value): 
+    # takes a matrix with one meter_no
+    df_hour = df.groupby('hour')
     df_hour = df.groupby('hour')
     list = []
     for h in range(len(df_hour)):
@@ -35,7 +38,7 @@ def get_mean_hourly(meter,df,value): # takes a matrix with one meter_no
     plt.plot(list,linewidth=0.2,label=meter)
     
 def plot_user_hour(df,value): # plots all users on the same graph for mean hourly consumption
-    file = open("meter_id.txt","r")
+    file = open("../meter_id.txt","r")
     file = file.read().strip().split("\n")
     df_object = df.groupby('meter_no')
     for meter in file:
@@ -54,6 +57,8 @@ def plot_user_hour(df,value): # plots all users on the same graph for mean hourl
 def get_mean_from_hour(df,value,label):
     df['weekday'] = df.index.weekday
     df['hour'] = df.index.hour
+    df['date'] = df.index.date
+    print(df.head())
     df_weekday = df.groupby('weekday')
     #print(df['hour'])
     for d in range(len(df_weekday)):
@@ -61,7 +66,19 @@ def get_mean_from_hour(df,value,label):
         df_hour = df_weekday.get_group(d).groupby('hour')
         for h in range(len(df_hour)):
             gethour = df_hour.get_group(h)
-            list.append(gethour[value].mean())
+            datehour = gethour.groupby('date')
+            datelist = []
+#            for date in df['date']:
+#                try:
+#                    date = str(date)
+#                    #date = strftime("%Y-%m-%d")
+#                    getdate = datehour.get_group(date)
+#                    tot_hour = getdate[value].sum()
+#                    datelist.append(tot_hour)    
+#                except:
+#                    continue
+#            list.append(stats.mean(datelist))
+            list.append(gethour[value].mean() )
         plt.plot(list,linewidth=0.2,label="day %s" % (d)) 
     plt.title('%s per hour of the day' % (label))
     plt.xlabel("Hour of the day")
@@ -119,7 +136,7 @@ def get_meter(meter,df):
 
 def check_zero(df):
     print("Checking for zero values.")
-    file = open("meter_id.txt","r")
+    file = open("../meter_id.txt","r")
     file = file.read().strip().split("\n")
     df_object = df.groupby('meter_no')
     zerolist = []
@@ -146,21 +163,14 @@ def check_zero(df):
     print(zeropower)
             
         
-            
-        
 
-import time
-start = time.time()
-print("Hello World!")
-
-def statistics(df_object,key):
+def statistics(df_object,key): ### not used anymore! 
     print("\n")
     print("Starting statistics.")
-    file = open("meter_id.txt","r")
+    file = open("../meter_id.txt","r")
     file = file.read().strip().split("\n")
     df_object = df_object.groupby('meter_no')
     df_stats = pd.DataFrame()
-    keys = ['energyact_pos','energyact_neg','energyreact_pos','energyreact_neg']
     for meter in file:
         meter = int(meter)
         try:
@@ -178,6 +188,35 @@ def statistics(df_object,key):
         except:
             continue
     return df_stats
+
+def describe(df_object): #### use this for statistics
+    print("\n")
+    print("Starting statistics.")
+    file = open("../meter_id.txt","r")
+    file = file.read().strip().split("\n")
+    df_object = df_object.groupby('meter_no')
+    df_stats = pd.DataFrame()
+    for meter in file:
+        meter = int(meter)
+        try:
+            df = df_object.get_group(meter)
+            df_describe = df.describe()
+            #print(df_describe)
+            #print(df_describe['energyact_pos']['mean'])
+            new_stats = pd.DataFrame(data = {'mean': df_describe['energyact_pos']['mean'],
+                                      'std': df_describe['energyact_pos']['std'],
+                                      'min': df_describe['energyact_pos']['min'], 
+                                      '25%': df_describe['energyact_pos']['25%'],
+                                      '50%': df_describe['energyact_pos']['50%'],
+                                      '75%': df_describe['energyact_pos']['75%'],
+                                      'max': df_describe['energyact_pos']['max']
+                                      }, index=[meter])
+            df_stats = df_stats.append(new_stats)
+        except:
+            continue
+    print(df_stats)    
+    
+    #return df_describe
 
 
 
@@ -203,6 +242,8 @@ def statistics(df_object,key):
 
 # group_by(meterid) och se om det kan köras genom Weka
 
+#### add adress and other columns to the data?
+
 # make plots more visible 
     
 ##### make sure to sum up within the hours! 
@@ -214,60 +255,98 @@ def statistics(df_object,key):
 
 
 ###### main script here
-#### Run first to edit the file with hours and dates in the same column
-#edit_time_stamp('3011_Virksomhed.csv','3011_Virksomhed_ny.csv')
-#edit_time_stamp('3011_Forbruger.csv','3011_Forbruger_ny.csv')
-
-#### Reading files into time series dataframes
-df_virksomhed = make_some_timeseries('3011_Virksomhed_ny.csv')
-df_forbruger = make_some_timeseries('3011_Forbruger_ny.csv')
-
-#### Plotting companies and ordinary customers
-#plt.plot(df_virksomhed['energyreact_pos'],linewidth=0.2,label='Energyreact_pos Virksomhed')
-#plt.plot(df_forbruger['energyreact_pos'],linewidth=0.2,label='Energyreact_pos Forbruger')
-#plt.plot(df_virksomhed['energyreact_neg'],linewidth=0.2,label='Energyreact_neg Virksomhed')
-#plt.plot(df_forbruger['energyreact_neg'],linewidth=0.2,label='Energyreact_neg Forbruger')
-#plt.title('Reactive power for the full dataset')
-#plt.xlabel("Time")
-#plt.ylabel("kW")
-#plt.legend(loc="upper left")
-#plt.show()
-
-plot_user_hour(df_virksomhed,'energyact_pos')
-plot_user_hour(df_forbruger,'energyact_pos')
+import time
+start = time.time()
+print("Hello World!")
 
 
-########### Plot the means for hour and month
-#print("Plotting mean for Virksomhed negative energy for hour and day")
-#get_mean_from_hour(df_virksomhed, 'energyact_neg', 'Mean Power')
-#get_mean_from_day(df_virksomhed, 'energyact_neg', 'Mean Power')
-#print("Plotting mean for Virksomhed positive energy for hour and day")
-#get_mean_from_hour(df_virksomhed, 'energyact_pos', 'Mean Power')
-#get_mean_from_day(df_virksomhed, 'energyact_pos', 'Mean Power')
-#
-#print("Plotting mean for Forbruger negative energy for hour and day")
-#get_mean_from_hour(df_forbruger, 'energyact_neg', 'Mean Power')
-#get_mean_from_day(df_forbruger, 'energyact_neg', 'Mean Power')
-#print("Plotting mean for Forbruger positive energy for hour and day")
-#get_mean_from_hour(df_forbruger, 'energyact_pos', 'Mean Power')
-#get_mean_from_day(df_forbruger, 'energyact_pos', 'Mean Power')
+def prepare_data():
+    #### Run first to edit the file with hours and dates in the same column
+    #edit_time_stamp('3011_Virksomhed.csv','3011_Virksomhed_ny.csv')
+    #edit_time_stamp('3011_Forbruger.csv','3011_Forbruger_ny.csv')
+    
+    #### Reading files into time series dataframes
+    df_virksomhed = make_some_timeseries('../3011_Virksomhed_ny.csv')
+    df_forbruger = make_some_timeseries('../3011_Forbruger_ny.csv')
+#prepare_data()
+
+
+describe(df_virksomhed)
+describe(df_forbruger)
+
+
+def test_plot():
+    #### Plotting companies and ordinary customers
+    print('Plotting companies and ordinary customers')
+    plt.plot(df_virksomhed['energyact_pos'],linewidth=0.2,label='Energyact_pos Virksomhed')
+    plt.plot(df_forbruger['energyact_pos'],linewidth=0.2,label='Energyact_pos Forbruger')
+    #plt.plot(df_virksomhed['energyact_neg'],linewidth=0.2,label='Energyact_neg Virksomhed')
+    #plt.plot(df_forbruger['energyact_neg'],linewidth=0.2,label='Energyact_neg Forbruger')
+    plt.title('Active power for the full dataset')
+    plt.xlabel("Time")
+    plt.ylabel("kW")
+    plt.legend(loc="upper left")
+    plt.show()
+#test_plot()
+
+
+#plot_user_hour(df_virksomhed,'energyact_pos')
+#plot_user_hour(df_forbruger,'energyact_pos')
+
+
+
+def mean_plot():
+    ########### Plot the means for hour and month
+    print('Plot the means for hour and month')
+    print("Plotting mean for Virksomhed negative energy for hour and day")
+    get_mean_from_hour(df_virksomhed, 'energyact_neg', 'Mean Power')
+    get_mean_from_day(df_virksomhed, 'energyact_neg', 'Mean Power')
+    print("Plotting mean for Virksomhed positive energy for hour and day")
+    get_mean_from_hour(df_virksomhed, 'energyact_pos', 'Mean Power')
+    get_mean_from_day(df_virksomhed, 'energyact_pos', 'Mean Power')
+    
+    print("Plotting mean for Forbruger negative energy for hour and day")
+    get_mean_from_hour(df_forbruger, 'energyact_neg', 'Mean Power')
+    get_mean_from_day(df_forbruger, 'energyact_neg', 'Mean Power')
+    print("Plotting mean for Forbruger positive energy for hour and day")
+    get_mean_from_hour(df_forbruger, 'energyact_pos', 'Mean Power')
+    get_mean_from_day(df_forbruger, 'energyact_pos', 'Mean Power')
+#mean_plot()
 
 #print(check_zero(df_virksomhed))
 #print(check_zero(df_forbruger)) # one meter has no values
 
-####### Create the stats for companies for each value
-#stats_virksomhed_actpos = statistics(df_virksomhed,'energyact_pos')
-#print("Positive active power stats for companies.")
-#print(stats_virksomhed_actpos.to_string())
-#stats_virksomhed_actneg = statistics(df_virksomhed,'energyact_neg')
-#print("Negative active power stats for companies.")
-#print(stats_virksomhed_actneg.to_string())
-#stats_virksomhed_repos = statistics(df_virksomhed,'energyreact_pos')
-#print("Positive reactive power stats for companies.")
-#print(stats_virksomhed_repos.to_string())
-#stats_virksomhed_reneg = statistics(df_virksomhed,'energyreact_neg')
-#print("Negative reactive power stats for companies.")
-#print(stats_virksomhed_reneg.to_string())
+def create_stats_companies():
+    ####### Create the stats for companies for each value
+    stats_virksomhed_actpos = statistics(df_virksomhed,'energyact_pos')
+    print("Positive active power stats for companies.")
+    print(stats_virksomhed_actpos.to_string())
+    stats_virksomhed_actneg = statistics(df_virksomhed,'energyact_neg')
+    print("Negative active power stats for companies.")
+    print(stats_virksomhed_actneg.to_string())
+    stats_virksomhed_repos = statistics(df_virksomhed,'energyreact_pos')
+    print("Positive reactive power stats for companies.")
+    print(stats_virksomhed_repos.to_string())
+    stats_virksomhed_reneg = statistics(df_virksomhed,'energyreact_neg')
+    print("Negative reactive power stats for companies.")
+    print(stats_virksomhed_reneg.to_string())
+
+def create_stats_customers():
+    ####### Create the stats for customers for each value
+    print('Create the stats for customers for each value')
+    stats_forbruger_actpos = statistics(df_forbruger,'energyact_pos')
+    print("Positive active power stats for customers.")
+    print(stats_forbruger_actpos.to_string())
+    stats_forbruger_actneg = statistics(df_forbruger,'energyact_neg')
+    print("Negative active power stats for customers.")
+    print(stats_forbruger_actneg)
+    stats_forbruger_repos = statistics(df_forbruger,'energyreact_pos')
+    print("Positive reactive power stats for customers.")
+    print(stats_forbruger_repos)
+    stats_forbruger_reneg = statistics(df_forbruger,'energyreact_neg')
+    print("Negative reactive power stats for customers.")
+    print(stats_forbruger_reneg)
+
 
 def make_big_df(df1,df2,df3,df4,filename):
     df = pd.DataFrame()
@@ -299,8 +378,6 @@ def make_big_df(df1,df2,df3,df4,filename):
 
 
 
-make_big_df(stats_virksomhed_actpos,stats_virksomhed_actneg,stats_virksomhed_repos,stats_virksomhed_reneg,'virksomhed_stats_data.csv')
-make_big_df(stats_forbruger_actpos,stats_forbruger_actneg,stats_forbruger_repos,stats_forbruger_reneg,'forbruger_stats_data.csv')
 
 
 #meter5650 = get_meter(19565650,df_forbruger)
@@ -308,35 +385,24 @@ make_big_df(stats_forbruger_actpos,stats_forbruger_actneg,stats_forbruger_repos,
 #print(meter5650['energyact_pos'])
 
 
-####### Create the stats for customers for each value
-#stats_forbruger_actpos = statistics(df_forbruger,'energyact_pos')
-#print("Positive active power stats for customers.")
-#print(stats_forbruger_actpos.to_string())
-#stats_forbruger_actneg = statistics(df_forbruger,'energyact_neg')
-#print("Negative active power stats for customers.")
-#print(stats_forbruger_actneg)
-#stats_forbruger_repos = statistics(df_forbruger,'energyreact_pos')
-#print("Positive reactive power stats for customers.")
-##print(stats_forbruger_repos)
-#stats_forbruger_reneg = statistics(df_forbruger,'energyreact_neg')
-#print("Negative reactive power stats for customers.")
-##print(stats_forbruger_reneg)
-
 ########### Sort values on maximum
+#print('Sort values on maximum')
 #stats_forbruger_actpos.sort_values('Max', axis=0, ascending=True,inplace=True)
 #print("Sorted values on maximum power consumption for customers")
-#print(statistics_forbruger.to_string())
+##print(statistics_forbruger.to_string())
 #stats_virksomhed_actpos.sort_values('Max', axis=0, ascending=True,inplace=True)
 #print("Sorted values on maximum power consumption for companies")
 #print(stats_virksomhed_actpos.to_string())
-
-####### Creating different columns for different types of local generation
+#
+######## Creating different columns for different types of local generation
+#print('Creating different columns for different types of local generation')
 #df_virksomhed_gentype = df_virksomhed['generatingunitkind']
 #df_virksomhed_gentype = df_virksomhed.groupby('generatingunitkind')
 #df_virksomhed_sol = df_virksomhed_gentype.get_group('Solceller')
 #df_virksomhed_none = df_virksomhed_gentype.get_group('Inget')
 
 ##### checking difference in negative energy
+#print('Checking difference in negative energy:')
 #get_mean_from_hour(df_virksomhed_sol, 'energyact_neg', 'Mean Power')
 #get_mean_from_hour(df_virksomhed_none, 'energyact_neg', 'Mean Power')
 
@@ -347,8 +413,11 @@ make_big_df(stats_forbruger_actpos,stats_forbruger_actneg,stats_forbruger_repos,
 #print(df_meterid.head(1))
 
 
+#make_big_df(stats_virksomhed_actpos,stats_virksomhed_actneg,stats_virksomhed_repos,stats_virksomhed_reneg,'../virksomhed_stats_data.csv')
+#make_big_df(stats_forbruger_actpos,stats_forbruger_actneg,stats_forbruger_repos,stats_forbruger_reneg,'../forbruger_stats_data.csv')
 
-#df_meterid.get_group(19547874).to_csv('meter_id.csv', encoding='utf-8', index=True)
+
+#df_meterid.get_group(19547874).to_csv('../meter_id.csv', encoding='utf-8', index=True)
 
 ########### Use if forbruger has solar panels or to check the types of generation
 #df_forbruger_gentype = df_forbruger['generatingunitkind']
@@ -380,6 +449,9 @@ make_big_df(stats_forbruger_actpos,stats_forbruger_actneg,stats_forbruger_repos,
 #plt.ylabel("kW")
 #plt.legend(loc="upper left")
 #plt.show()
+
+
+
 
 end = time.time()
 print('Time elaps was: ' , end - start , ' seconds.')
