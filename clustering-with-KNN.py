@@ -1,5 +1,6 @@
 # Prediction tests # 
 import pandas as pd
+import numpy as np
 from sklearn.cluster import KMeans
 import matplotlib.pyplot as plt
 
@@ -111,7 +112,45 @@ def get_cluster_data(k,labels,df): # puts the label into the df at the right met
             df_cluster = df_cluster.append(df_meter)
     return df_cluster
 
-
+def cluster_mean(df):
+    
+#    df = df.groupby('meter_no')
+#    for meter in df:
+#        meter_no = df.get_group(meter)
+#    
+#    df = df.groupby(df.index)
+#    new_df = pd.DataFrame()
+    
+    mean_meter = pd.DataFrame()
+    for date in df.index:
+        energyact_pos = np.mean(df['energyact_pos'])
+        energyact_neg = np.mean(df['energyact_neg'])
+        energyreact_pos = np.mean(df['energyreact_pos'])
+        energyreact_neg = np.mean(df['energyreact_neg'])
+        mean_meter = {'date': date,'energyact_pos': energyact_pos, 'energyact_neg': energyact_neg,
+                      'energyreact_pos': energyreact_pos, 'energyreact_neg': energyreact_neg}
+        mean_meter.index = ['date']
+        
+        print(mean_meter)
+    return mean_meter
+#    for date in df:
+#        for column in date:
+#            energyact_pos = np.mean(df['energyact_pos'])
+#            energyact_neg = np.mean(df['energyact_neg'])
+#            energyreact_pos = np.mean(df['energyreact_pos'])
+#            energyreact_neg = np.mean(df['energyreact_neg'])
+#            
+#            get_mean_from_all
+#            new_df = {'energyact_pos': energyact_pos, 'energyact_neg': energyact_neg,
+#                      'energyreact_pos': energyreact_pos, 'energyreact_neg': energyreact_neg}
+#            
+#    set_index = something
+            
+        
+            
+        
+    
+    
 
 
 ###########################################################################
@@ -143,16 +182,22 @@ def main():
     for label in range(k_virk): # print the clusters
         print("Cluster: " , label)
         virk_cluster0 = virk_cluster.get_group(label)
+        cluster_mean(virk_cluster0)
         print(virk_cluster0.groupby('meter_no').head())
         print('\n')
+        
 
     print('The forbruger clusters are:')
     forb_cluster = forb_cluster.groupby('label')
     for label in range(k_forb):
         print("Cluster: " , label)
         forb_cluster0 = forb_cluster.get_group(label)
+        cluster_mean(forb_cluster0)
+        # create new variables for each group
+        
         print(forb_cluster0.groupby('meter_no').head())
         print('\n')
+        
  
     
     
