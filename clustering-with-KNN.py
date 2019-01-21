@@ -123,13 +123,20 @@ def cluster_mean(df):
     
     mean_meter = pd.DataFrame()
     for date in df.index:
-        energyact_pos = np.mean(df['energyact_pos'])
-        energyact_neg = np.mean(df['energyact_neg'])
-        energyreact_pos = np.mean(df['energyreact_pos'])
-        energyreact_neg = np.mean(df['energyreact_neg'])
-        mean_meter = {'date': date,'energyact_pos': energyact_pos, 'energyact_neg': energyact_neg,
-                      'energyreact_pos': energyreact_pos, 'energyreact_neg': energyreact_neg}
-        mean_meter.index = ['date']
+        print(date)
+        df_add = pd.DataFrame()
+        df_add['energyact_pos'] = np.mean(df['energyact_pos'])
+        #df_add['energyact_neg'] = np.mean(df['energyact_neg'])
+        #df_add['energyreact_pos'] = np.mean(df['energyreact_pos'])
+        #df_add['energyreact_neg'] = np.mean(df['energyreact_neg'])
+        df_add['date'] = date
+        print(df_add)
+        print(df_add.head())
+        #mean_meter = {'date': date,'energyact_pos': energyact_pos, 'energyact_neg': energyact_neg,
+        #              'energyreact_pos': energyreact_pos, 'energyreact_neg': energyreact_neg}
+        df_add.set_index = ['date']
+        
+        mean_meter.append(df_add)
         
         print(mean_meter)
     return mean_meter
