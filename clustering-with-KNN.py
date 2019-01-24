@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 from sklearn.cluster import KMeans
 import matplotlib.pyplot as plt
+from arima-model import arima_function
 
 def make_some_timeseries(file): ## import dataset
     # Read file and create a time series object
@@ -113,32 +114,36 @@ def get_cluster_data(k,labels,df): # puts the label into the df at the right met
     return df_cluster
 
 def cluster_mean(df):
-    
-#    df = df.groupby('meter_no')
-#    for meter in df:
-#        meter_no = df.get_group(meter)
-#    
-#    df = df.groupby(df.index)
-#    new_df = pd.DataFrame()
-    
+    # gets a dataframe with meters in one cluster and creates a new
+    # pattern from the mean of those values    
     mean_meter = pd.DataFrame()
+    df_grouped = df.groupby(df.index)
     for date in df.index:
-        print(date)
-        df_add = pd.DataFrame()
-        df_add['energyact_pos'] = np.mean(df['energyact_pos'])
+        #print(date)
+        df_get = df_grouped.get_group(date)
+        df_add = pd.DataFrame({
+              "energyact_pos":[np.mean(df_get['energyact_pos'])],
+              "energyact_neg": [np.mean(df_get['energyact_neg'])],
+              "energyreact_pos": [np.mean(df_get['energyreact_pos'])],
+              "energyreact_neg": [np.mean(df_get['energyreact_neg'])],
+              "label": [df_get['label']],
+              "date": [date]})
+        
+        #df_add = pd.DataFrame()
+        #df_add['energyact_pos'] = np.mean(df['energyact_pos'])
         #df_add['energyact_neg'] = np.mean(df['energyact_neg'])
         #df_add['energyreact_pos'] = np.mean(df['energyreact_pos'])
         #df_add['energyreact_neg'] = np.mean(df['energyreact_neg'])
-        df_add['date'] = date
-        print(df_add)
-        print(df_add.head())
+        #df_add['date'] = date
+        #print(df_add)
+        #print(df_add.head())
         #mean_meter = {'date': date,'energyact_pos': energyact_pos, 'energyact_neg': energyact_neg,
         #              'energyreact_pos': energyreact_pos, 'energyreact_neg': energyreact_neg}
-        df_add.set_index = ['date']
+        df_add.set_index('date', inplace=True)
         
-        mean_meter.append(df_add)
+        mean_meter = mean_meter.append(df_add)
         
-        print(mean_meter)
+    print(mean_meter.head())
     return mean_meter
 #    for date in df:
 #        for column in date:
@@ -153,7 +158,27 @@ def cluster_mean(df):
 #            
 #    set_index = something
             
-        
+def arima_function(df,column,p,d,q):
+    from statsmodels.tsa.arima_model import ARIMA
+    from pandas.plotting import autocorrelation_plot
+    from matplotlib import pyplot
+    
+    series = df[column]
+    autocorrelation_plot(series)
+    pyplot.show()
+    # pd.read_csv('shampoo-sales.csv', header=0, parse_dates=[0], index_col=0, squeeze=True, date_parser=parser)
+    # fit model
+    model = ARIMA(series, order=(p,d,q))
+    model_fit = model.fit(disp=0)
+    print(model_fit.summary())
+    # plot residual errors
+    residuals = pd.DataFrame(model_fit.resid)
+    residuals.plot()
+    pyplot.show()
+    residuals.plot(kind='kde')
+    pyplot.show()
+    print(residuals.describe())
+    
             
         
     
@@ -161,52 +186,58 @@ def cluster_mean(df):
 
 
 ###########################################################################
-def main():
-    df_virksomhed = make_some_timeseries('../3011_Virksomhed_ny.csv')
-    df_forbruger = make_some_timeseries('../3011_Forbruger_ny.csv')
-    
-    ## Print the datasets
-    #print(df_virksomhed)
-    #print('\n')
-    #print(df_forbruger)
-    #print('\n')
-    
-    ## Find simple stats from dataset ## 
-    df_virk_stats = describe(df_virksomhed)
-    df_forb_stats = describe(df_forbruger)
-    
-    k_virk = 2
-    k_forb = 3
-    
-    print('K-means for Virksomhed:')
-    virk_cluster = kmeans(k_virk,df_virk_stats,df_virksomhed)
+
+df_virksomhed = make_some_timeseries('../3011_Virksomhed_ny.csv')
+df_forbruger = make_some_timeseries('../3011_Forbruger_ny.csv')
+
+## Print the datasets
+#print(df_virksomhed)
+#print('\n')
+#print(df_forbruger)
+#print('\n')
+
+## Find simple stats from dataset ## 
+df_virk_stats = describe(df_virksomhed)
+df_forb_stats = describe(df_forbruger)
+
+k_virk = 2
+k_forb = 3
+
+print('K-means for Virksomhed:')
+virk_cluster = kmeans(k_virk,df_virk_stats,df_virksomhed)
+print('\n')
+print('K-means for Forbruger:')
+forb_cluster = kmeans(k_forb,df_forb_stats,df_forbruger)
+
+print('The virksomhed clusters are:')
+#virk_mean = pd.DataFrame()
+virk_cluster = virk_cluster.groupby('label')
+for label in range(k_virk): # print the clusters
+    print("Cluster: " , label)
+    virk_cluster0 = virk_cluster.get_group(label)
+    #virk_mean = virk_mean.append(cluster_mean(virk_cluster0))
+    #arima_function(df,column,p,d,q)
+    #arima_function(virk_cluster0,'energyact_pos',24,1,0)
+    virk_cluster0.to_csv('../virk cluster %s.csv' %(label) , encoding='utf-8', index=True)
+    #"%d string %d string2" % (number, number2)
+    print(virk_cluster0.groupby('meter_no').head())
     print('\n')
-    print('K-means for Forbruger:')
-    forb_cluster = kmeans(k_forb,df_forb_stats,df_forbruger)
+    
 
-    print('The virksomhed clusters are:')
-    virk_cluster = virk_cluster.groupby('label')
-    for label in range(k_virk): # print the clusters
-        print("Cluster: " , label)
-        virk_cluster0 = virk_cluster.get_group(label)
-        cluster_mean(virk_cluster0)
-        print(virk_cluster0.groupby('meter_no').head())
-        print('\n')
-        
-
-    print('The forbruger clusters are:')
-    forb_cluster = forb_cluster.groupby('label')
-    for label in range(k_forb):
-        print("Cluster: " , label)
-        forb_cluster0 = forb_cluster.get_group(label)
-        cluster_mean(forb_cluster0)
-        # create new variables for each group
-        
-        print(forb_cluster0.groupby('meter_no').head())
-        print('\n')
-        
+print('The forbruger clusters are:')
+#forb_mean = pd.DataFrame()
+forb_cluster = forb_cluster.groupby('label')
+for label in range(k_forb):
+    print("Cluster: " , label)
+    forb_cluster0 = forb_cluster.get_group(label)
+    #forb_mean = forb_mean.append(cluster_mean(forb_cluster0))
+    # create new variables for each group
+    #arima_function(forb_cluster0,'energyact_pos',24,1,0)
+    forb_cluster0.to_csv('../forb cluster %s.csv' %(label) , encoding='utf-8', index=True)
+    print(forb_cluster0.groupby('meter_no').head())
+    print('\n')
+    
  
     
     
     
-main()
